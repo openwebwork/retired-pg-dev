@@ -11,6 +11,7 @@ use Opcode;
 use WWSafe;
 use Net::SMTP;
 use WeBWorK::PG::IO;
+use WeBWorK::Debug;
 
 #use PadWalker;     # used for processing error messages
 #use Data::Dumper;
@@ -155,7 +156,14 @@ sub load_extra_packages{
 
 sub new {
 	my $class = shift;
+
+        debug("Creating new translator.");
+
 	my $safe_cmpt = new WWSafe; #('PG_priv');
+
+        debug("Created new safe compartment.");
+        debug("Safe: " . $safe_cmpt->{Root});
+
 	my $self = {
 	    preprocess_code           =>  \&default_preprocess_code,
 	    postprocess_code           => \&default_postprocess_code,
@@ -396,7 +404,9 @@ sub pre_load_macro_files {
 #    all other files are loaded with restriction
 #     
 			# construct a regex that matches only these three files safely
-			my @unrestricted_files = (); #  no longer needed? FIXME w/PG.pl IO.pl/;
+
+                        #  no longer needed? FIXME w/PG.pl IO.pl/;
+			my @unrestricted_files = qw(); 
 			my $unrestricted_files = join("|", map { quotemeta } @unrestricted_files);
 			
 			my $store_mask; 
@@ -531,7 +541,6 @@ sub source_file {
 }
 
 
-
 sub unrestricted_load {
 	my $self = shift;
 	my $filePath = shift;
@@ -551,7 +560,7 @@ sub unrestricted_load {
 	my $init_subroutine  = eval { \&{$init_subroutine_name} };
 	warn "No init routine for $init_subroutine_name: $@" if  $debugON and $@;
 	use strict;
-    my $macro_file_loaded = ref($init_subroutine) =~ /CODE/;
+        my $macro_file_loaded = ref($init_subroutine) =~ /CODE/;
 
 	#print STDERR "$macro_file_name   has not yet been loaded\n" unless $macro_file_loaded;	
 	unless ($macro_file_loaded) {
