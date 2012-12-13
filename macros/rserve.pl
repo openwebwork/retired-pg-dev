@@ -22,7 +22,10 @@ vector is returned as a perl array object.
 
 =cut
 
-use Rserve::Connection;
+# This uses Rserve::Connection, but to play nicely with the Safe compartment, we load the module
+# and all of its dependencies by specifying them in the modules configuration of defaults.config.
+# Hence the following line is commented out.
+# Rserve::Connection;
 #use strict;
 #use warnings;
 
@@ -33,20 +36,18 @@ sub _rserve_init {
 };
 
 sub rserve_start {
-    if (!defined $cnx or ref($cnx) != "Rserve::Connection") {
+    if (!defined $cnx or ref($cnx) ne "Rserve::Connection") {
 	$cnx = Rserve::Connection->new('localhost');
     }
 
     # Ensure R's random number generation is given a well-defined seed.
     # $problemSeed is the environmental variable defined by WeBWorK which
     # gives the random seed associated to a given problem/user assignment.
-
-    my $query = "set.seed($problemSeed)\n";
-    $cnx->evalString($query);
+    $cnx->evalString("set.seed($problemSeed)");
 }
 
 sub rserve_finish {
-    if (ref($cnx)=="Rserve::Connection") {
+    if (ref($cnx) eq "Rserve::Connection") {
 	$cnx->close();
     }
 }
@@ -54,7 +55,7 @@ sub rserve_finish {
 sub rserve_eval { 
   my $query = shift; 
 
-  if (ref($cnx) != "Rserve::Connection") {
+  if (ref($cnx) ne "Rserve::Connection") {
       $cnx = Rserve::Connection->new('localhost');
   }
   my @res = $cnx->evalString($query);
@@ -73,44 +74,45 @@ sub rserve_query {
 
 sub rserve_start_plot ($) {
     my $imgtype = shift;
-    my $rand = sprintf("%05d", random(0, 99999, 1));
 
-    my $filename = "tmpfile".$rand;
+    my $filename = "";
 
-    if ($imgtype == 'png') {
-	$suffix = ".png";
-	$filename .=  $suffix;
-	rserve_eval("png(filename='/tmp/$filename')");
+    if ($imgtype eq 'png') {
+	@filename_ref = rserve_eval('tempfile("tmpfile", tempdir(), ".png" )');
+	$filename = $filename_ref[0];
+	rserve_eval("png(filename='$filename')");
     }
-    elsif ($imgtype = 'jpg') {
-	$suffix = ".jpg";
-	$filename .=  $suffix;
-	rserve_eval("jpeg(filename='/tmp/$filename')");
+    elsif ($imgtype eq 'jpg') {
+	@filename_ref = rserve_eval('tempfile("tmpfile", tempdir(), ".jpg" )');
+	$filename = $filename_ref[0];
+	rserve_eval("jpeg(filename='$filename')");
     }
-    elsif ($imgtype = 'pdf') {
-	$suffix = ".pdf";
-	$filename .=  $suffix;
-	rserve_eval("pdf(filename='/tmp/$filename')");
+    elsif ($imgtype eq 'pdf') {
+	@filename_ref = rserve_eval('tempfile("tmpfile", tempdir(), ".pdf" )');
+	$filename = $filename_ref[0];
+	rserve_eval("pdf(filename='$filename')");
     }
     else {
 	warn "unknown/unsupported image type '$imgtype'\n";
     }
-
     return $filename;
 }
 
 sub rserve_finish_plot ($) {
-    my $file = shift;
-    my $filename = $tempDirectory . "/$file";
+    my $filepath = shift;
+
+    @pathcomponents = split "/", $filepath;
+    $file = $pathcomponents[@pathcomponents-1];
+
+    my $imgfile = $tempDirectory . $file;
 
     rserve_eval("dev.off()");
-    @stream = rserve_eval("readBin('/tmp/$file', what='raw', n=1e6)");
 
-    open BINARY, ">:raw", $filename;
-    foreach (@stream) { print BINARY $_}
-    close BINARY;
-    
-    return $filename;
+    # $tempDirectory is a WeBWorK "environmental variable";
+    $cnx-> evalStringToFile("readBin('$filepath', what='raw', n=1e6)", $imgfile);
+
+
+    return $imgfile;
 }
 
 1;
