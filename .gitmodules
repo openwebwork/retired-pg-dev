@@ -1,3 +1,0 @@
-[submodule "lib/Rserve-perl"]
-	path = lib/Rserve-perl
-	url = git://github.com/djun-kim/Rserve-perl.git
