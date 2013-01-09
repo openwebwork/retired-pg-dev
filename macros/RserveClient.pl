@@ -34,15 +34,15 @@ vector is returned as a perl array object.
 #use strict;
 #use warnings;
 
-# Rserve connection
+# RserveClient connection
 my $cnx;
 
 sub _rserve_init {
 };
 
 sub rserve_start {
-    if (!defined $cnx or ref($cnx) ne "Rserve::Connection") {
-	$cnx = Rserve::Connection->new('localhost');
+    if (!defined $cnx or ref($cnx) ne "Statistics::RserveClient::Connection") {
+	$cnx = Statistics::RserveClient::Connection->new('localhost');
     }
 
     # Ensure R's random number generation is given a well-defined seed.
@@ -52,16 +52,16 @@ sub rserve_start {
 }
 
 sub rserve_finish {
-    if (ref($cnx) eq "Rserve::Connection") {
-	$cnx->close();
+    if (ref($cnx) eq "Statistics::RserveClient::Connection") {
+	$cnx->close_connection();
     }
 }
 
 sub rserve_eval { 
   my $query = shift; 
 
-  if (ref($cnx) ne "Rserve::Connection") {
-      $cnx = Rserve::Connection->new('localhost');
+  if (ref($cnx) ne "Statistics::RserveClient::Connection") {
+      $cnx = Statistics::RserveClient::Connection->new('localhost');
   }
   my @res = $cnx->evalString($query);
   return @res;
@@ -71,7 +71,7 @@ sub rserve_eval {
 sub rserve_query {
   my $query = shift; 
   $query = "set.seed($problemSeed)\n" . $query;
-  my $rserve_client = Rserve::Connection->new('localhost');
+  my $rserve_client = Statistics::RserveClient::Connection->new('localhost');
   my @res = $rserve_client->evalString($query);
   #print ("result = $res");
   return @res;
